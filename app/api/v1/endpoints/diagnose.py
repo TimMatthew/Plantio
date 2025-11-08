@@ -32,7 +32,6 @@ async def diagnose(
         raise HTTPException(status_code=400, detail=f"invalid_image: {e}") from e
     ms = int((time.perf_counter() - t0) * 1000)
 
-    # Enrich with plant/disease names if present
     enriched = []
     decided = None
     for p_id, d_id, conf in candidates:

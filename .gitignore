@@ -1,4 +1,4 @@
-# середовище/кеші
+# Environment/caches
 .venv/
 __pycache__/
 *.pyc
@@ -14,17 +14,17 @@ htmlcov/
 .idea/
 .vscode/
 
-# локальні файли/секрети
+# Local files/secrets
 .env
 .env.*
 !.env.example
 !.env.prod.example
 
-# моделі та локальні завантаження
+# Models and local downloads
 models/
 !models/.gitkeep
 storage/uploads/
 !storage/.gitkeep
 
-# інше
+# Other
 .DS_Store
