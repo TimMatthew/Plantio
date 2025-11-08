@@ -1,0 +1,30 @@
+# середовище/кеші
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+
+# IDE
+.idea/
+.vscode/
+
+# локальні файли/секрети
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# моделі та локальні завантаження
+models/
+!models/.gitkeep
+storage/uploads/
+!storage/.gitkeep
+
+# інше
+.DS_Store
