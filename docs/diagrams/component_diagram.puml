@@ -1,0 +1,44 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+' === Актор (веб-користувач) ===
+actor "Web Client" as Web
+
+' === Зовнішні системи ===
+component "MongoDB / Atlas" as MongoDB <<database>>
+component "Файлова система\n(uploads, models)" as FS <<storage>>
+
+' === Додаток FastAPI ===
+node "FastAPI Application" as FastAPI {
+  component "API\n(Diagnosis, Diseases, Plants, Health)" as ApiV1 <<router>>
+
+  component "Inference Service" as Inference
+  component "LocalFileStorage" as LocalFS
+  component "DB Init / Access" as DbInit <<motor>>
+  component "Settings" as Settings <<config>>
+  component "Logging (InterceptHandler)" as Logging <<logging>>
+}
+
+' === Бібліотеки як внутрішні залежності ===
+component "PyTorch" as LibTorch <<library>>
+component "NumPy / PIL" as LibImg <<library>>
+
+' === Взаємодії ===
+Web --> ApiV1 : HTTP/JSON
+
+ApiV1 --> Inference : Класифікація зображення
+ApiV1 --> LocalFS : Читання завантажень
+ApiV1 --> MongoDB : CRUD/пошук
+
+DbInit --> MongoDB : Async підключення (motor)
+FastAPI --> DbInit : Ініціалізація
+FastAPI --> Settings : Конфігурація (URI, CORS, шляхи)
+FastAPI --> Logging : Логування
+
+Inference --> LocalFS : Модель та class_map
+Inference --> LibTorch : Обчислення
+Inference --> LibImg : Препроцесинг
+
+LocalFS --> FS : Читання/запис файлів
+@enduml

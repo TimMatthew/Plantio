@@ -1,0 +1,89 @@
+@startuml
+set namespaceSeparator ::
+hide empty members
+
+package "app.core.config" {
+  class "Settings" as app_core_config_Settings {
+  app_name: str
+  app_version: str
+  env: str
+  mongo_uri_local: str
+  mongo_uri_atlas: str | None
+  database_name: str
+  host: str
+  port: int
+  upload_dir: str
+  model_path: str
+  class_map_path: str | None
+  allowed_origins: list[str]
+  min_confidence: float
+  allow_healthy: bool
+  min_margin: float
+  model_config
+  }
+}
+
+package "app.core.logging" {
+  class "InterceptHandler" as app_core_logging_InterceptHandler {
+  }
+}
+
+package "app.models.diagnosis" {
+  class "Candidate" as app_models_diagnosis_Candidate {
+  disease_id: str
+  confidence: float
+  }
+  class "Diagnosis" as app_models_diagnosis_Diagnosis {
+  status: str
+  request: dict
+  result: dict | None
+  created_at: datetime
+  inference_ms: int | None
+  }
+}
+
+package "app.models.disease" {
+  class "Disease" as app_models_disease_Disease {
+  id: str
+  plant_id: str
+  name: Dict[str, str]
+  symptoms: List[str]
+  causes: Optional[str]
+  treatments: List[dict]
+  gallery: List[str]
+  popularity: int
+  }
+  class "TreatmentItem" as app_models_disease_TreatmentItem {
+  }
+}
+
+package "app.models.plant" {
+  class "Plant" as app_models_plant_Plant {
+  id: str
+  name: Dict[str, str]
+  aliases: List[str]
+  images: List[str]
+  popularity: int
+  }
+}
+
+package "app.services.inference" {
+  class "_BaseClassifier" as app_services_inference__BaseClassifier {
+  }
+  class "_DummyClassifier" as app_services_inference__DummyClassifier {
+  }
+  class "_TorchClassifier" as app_services_inference__TorchClassifier {
+  }
+}
+
+package "app.services.storage" {
+  class "LocalFileStorage" as app_services_storage_LocalFileStorage {
+  }
+}
+
+app_services_inference__DummyClassifier --|> app_services_inference__BaseClassifier
+app_services_inference__TorchClassifier --|> app_services_inference__BaseClassifier
+
+app_models_diagnosis_Candidate " * " --> " 1 " app_models_disease_Disease : Candidate.disease_id → Disease.id\nКандидат класифікації посилається на конкретну хворобу
+app_models_disease_Disease " * " --> " 1 " app_models_plant_Plant : Disease.plant_id → Plant.id\nКожна хвороба належить до певної рослини (виду/культури)
+@enduml
