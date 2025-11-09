@@ -1,64 +1,144 @@
 import time
+from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from loguru import logger
 
+from app.core.config import settings
 from app.models.diagnosis import Diagnosis
-from app.models.disease import Disease
 from app.models.plant import Plant
-from app.services.inference import DummyClassifier
+from app.services.inference import predict_topk
 from app.services.storage import LocalFileStorage
 
 router = APIRouter()
-
 _storage = LocalFileStorage()
-_classifier = DummyClassifier()
+
+
+async def _enrich_candidates_with_embedded(
+    raw: list[dict[str, Any]], threshold: float
+) -> tuple[list[dict[str, Any]], str | None]:
+    """
+    Під вашу схему Mongo:
+      plants: { plantName: str, diseases: [ { diseaseName: str, ... } ] }
+    Приймає кандидатів у форматі:
+      {class_index?, plant_name?, disease_name?, plant_id?, disease_id?, confidence}
+    Повертає (enriched, decided_disease_name|None)
+    """
+    enriched: list[dict[str, Any]] = []
+    decided: str | None = None
+
+    for item in raw:
+        conf = float(item.get("confidence", 0.0))
+
+        plant_ref = (
+            item.get("plant_name") or item.get("plant_label") or item.get("plant_id")
+        )
+        disease_ref = (
+            item.get("disease_name")
+            or item.get("disease_label")
+            or item.get("disease_id")
+        )
+
+        plant_name: str | None = None
+        plant_oid: str | None = None
+        disease_name: str | None = None
+        disease_id: str | None = None
+
+        doc: Plant | None = None
+        if isinstance(plant_ref, str) and plant_ref:
+            try:
+                doc = await Plant.find_one(Plant.plantName == plant_ref)
+            except Exception:
+                logger.exception("plant_lookup_failed for %r", plant_ref)
+                doc = None
+
+        if doc:
+            plant_name = getattr(doc, "plantName", None)
+            try:
+                plant_oid = str(doc.id)
+            except Exception:
+                plant_oid = None
+
+            if (
+                isinstance(disease_ref, str)
+                and disease_ref
+                and getattr(doc, "diseases", None)
+            ):
+                try:
+                    for d in doc.diseases or []:
+                        name = getattr(d, "diseaseName", None)
+                        if name is None and isinstance(d, dict):
+                            name = d.get("diseaseName")
+                        if name == disease_ref:
+                            disease_name = name
+                            break
+                except Exception:
+                    logger.exception("disease_lookup_failed on plant %r", plant_name)
+
+        if plant_name is None and isinstance(plant_ref, str):
+            plant_name = plant_ref
+        if disease_name is None and isinstance(disease_ref, str):
+            disease_name = disease_ref
+
+        enriched.append(
+            {
+                "plant_id": plant_oid,
+                "plant_name": plant_name,
+                "disease_id": disease_id,
+                "disease_name": disease_name,
+                "confidence": conf,
+            }
+        )
+
+        if decided is None and disease_name and conf >= threshold:
+            decided = disease_name
+
+    return enriched, decided
 
 
 @router.post("/diagnose")
 async def diagnose(
     image: UploadFile = File(...),  # noqa: B008
-    topK: int = Form(3),
-    threshold: float = Form(0.6),
+    topK: int = Form(default=3),
+    threshold: float = Form(default=0.6),
 ):
     content = await image.read()
     if not content:
         raise HTTPException(status_code=400, detail="empty_file")
 
-    path, sha256 = _storage.save(image.filename, content)
+    _, sha256 = _storage.save(image.filename, content)
+
     t0 = time.perf_counter()
     try:
-        candidates = _classifier.predict_topk(content, topk=topK)
+        candidates = predict_topk(content, topk=topK)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"invalid_image: {e}") from e
     ms = int((time.perf_counter() - t0) * 1000)
 
-    enriched = []
-    decided = None
-    for p_id, d_id, conf in candidates:
-        plant = await Plant.get(p_id)
-        disease = await Disease.get(d_id)
-        item = {
-            "plant_id": p_id,
-            "plant_name": plant.name["uk"] if plant else None,
-            "disease_id": d_id,
-            "disease_name": disease.name["uk"] if disease else None,
-            "confidence": conf,
-        }
-        enriched.append(item)
-        if decided is None and conf >= threshold:
-            decided = d_id
+    try:
+        effective_threshold = max(threshold, settings.min_confidence)
+        enriched, decided = await _enrich_candidates_with_embedded(
+            candidates, effective_threshold
+        )
+    except Exception as e:
+        logger.exception("_enrich_candidates_with_embedded failed")
+        raise HTTPException(status_code=500, detail=f"enrich_failed: {e}") from e
 
     doc = Diagnosis(
         status="DONE",
         request={"imageSha256": sha256, "filename": image.filename},
         result={
-            "plantId": enriched[0]["plant_id"] if enriched else None,
+            "plantId": enriched[0].get("plant_id") if enriched else None,
             "candidates": enriched,
             "decidedDiseaseId": decided,
         },
         inference_ms=ms,
     )
-    await doc.insert()
+    try:
+        await doc.insert()
+    except Exception as e:
+        logger.exception("diagnosis_insert_failed")
+        raise HTTPException(status_code=500, detail=f"insert_failed: {e}") from e
 
     if decided is None:
         raise HTTPException(

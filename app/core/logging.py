@@ -4,7 +4,6 @@ import sys
 from loguru import logger
 
 
-# Bridge standard logging to loguru
 class InterceptHandler(logging.Handler):
     def emit(self, record):
         try:

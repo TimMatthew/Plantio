@@ -19,12 +19,24 @@ htmlcov/
 .env.*
 !.env.example
 !.env.prod.example
+.env.*.local
 
 # Models and local downloads
 models/
 !models/.gitkeep
 storage/uploads/
 !storage/.gitkeep
+storage/uploads/**
+storage/tmp/**
+*.pth
+*.pt
+app/models/**/model.pth
 
 # Other
 .DS_Store
+
+app/models/plantio/*
+!app/models/plantio/.gitkeep
+app/models/plantio/*.pth
+app/models/plantio/class_map.json
+
