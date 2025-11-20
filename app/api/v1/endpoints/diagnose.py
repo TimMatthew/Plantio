@@ -15,17 +15,19 @@ _storage = LocalFileStorage()
 
 
 async def _enrich_candidates_with_embedded(
-    raw: list[dict[str, Any]], threshold: float
+    raw: list[dict[str, Any]],
+    threshold: float,
 ) -> tuple[list[dict[str, Any]], str | None]:
     """
     Приймає кандидатів у форматі:
       {class_index?, plant_name?, disease_name?, plant_id?, disease_id?, confidence}
-    Повертає (enriched, decided_disease_name|None)
+    Повертає: (список збагачених кандидатів, decided_disease_name | None)
     """
     enriched: list[dict[str, Any]] = []
     decided: str | None = None
 
     for item in raw:
+        # 1. Базові значення з кандидата
         conf = float(item.get("confidence", 0.0))
 
         plant_ref = (
@@ -42,33 +44,40 @@ async def _enrich_candidates_with_embedded(
         disease_name: str | None = None
         disease_id: str | None = None  # поки не використовуємо
 
+        # 2. Пробуємо підтягнути Plant із Mongo, якщо є рядковий plant_ref
         doc: Any = None
         if isinstance(plant_ref, str) and plant_ref:
             try:
                 doc = await Plant.find_one({"plantName": plant_ref})
             except Exception:
-                try:
-                    doc = await Plant.find_one(plant_ref)
-                except Exception:
-                    logger.exception("plant_lookup_failed for %r", plant_ref)
-                    doc = None
+                # важливе місце: не робимо другого виклику find_one(plant_ref),
+                # просто лог і рухаємось далі з doc = None
+                logger.error("plant_lookup_failed for %r", plant_ref, exc_info=True)
+                doc = None
 
-        if doc:
+        # 3. Якщо doc є — акуратно парсимо його структуру
+        if doc is not None:
             try:
+                # ім'я рослини
                 plant_name = (
                     getattr(doc, "plantName", None)
                     or getattr(doc, "name", None)
                     or getattr(doc, "plant_name", None)
                 )
+
+                # id рослини
                 if getattr(doc, "id", None) is not None:
                     plant_oid = str(doc.id)
 
+                # список хвороб у документі
                 diseases = getattr(doc, "diseases", None) or getattr(
                     doc, "disease", None
                 )
+
                 if isinstance(disease_ref, str) and disease_ref and diseases:
                     try:
                         for d in diseases or []:
+                            # d може бути Beanie-моделлю або dict
                             name = getattr(d, "diseaseName", None)
                             if name is None and isinstance(d, dict):
                                 name = (
@@ -76,6 +85,7 @@ async def _enrich_candidates_with_embedded(
                                     or d.get("name")
                                     or d.get("disease_name")
                                 )
+
                             if name == disease_ref:
                                 disease_name = name
                                 break
@@ -86,9 +96,10 @@ async def _enrich_candidates_with_embedded(
             except Exception:
                 logger.exception("unexpected_plant_doc_shape: %r", doc)
 
-        # Фолибек: беремо значення з кандидата
+        # 4. Fallback: якщо Mongo не дала інформацію — беремо з сирого кандидата
         if plant_name is None and isinstance(plant_ref, str):
             plant_name = plant_ref
+
         if disease_name is None and isinstance(disease_ref, str):
             disease_name = disease_ref
 
@@ -102,6 +113,7 @@ async def _enrich_candidates_with_embedded(
             }
         )
 
+        # 5. Визначаємо "основний" діагноз, якщо ще не обрали
         if decided is None and disease_name and conf >= threshold:
             decided = disease_name
 
