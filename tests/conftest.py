@@ -29,7 +29,6 @@ async def app_lifespan():
 
 @pytest.fixture(scope="session")
 def transport():
-    # Без параметра lifespan — ним керує LifespanManager
     return ASGITransport(app=app)
 
 
