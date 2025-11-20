@@ -1,5 +1,5 @@
 import time
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from loguru import logger
@@ -7,7 +7,7 @@ from loguru import logger
 from app.core.config import settings
 from app.models.diagnosis import Diagnosis
 from app.models.plant import Plant
-from app.services.inference import predict_topk
+from app.services import inference
 from app.services.storage import LocalFileStorage
 
 router = APIRouter()
@@ -18,8 +18,6 @@ async def _enrich_candidates_with_embedded(
     raw: list[dict[str, Any]], threshold: float
 ) -> tuple[list[dict[str, Any]], str | None]:
     """
-    Під вашу схему Mongo:
-      plants: { plantName: str, diseases: [ { diseaseName: str, ... } ] }
     Приймає кандидатів у форматі:
       {class_index?, plant_name?, disease_name?, plant_id?, disease_id?, confidence}
     Повертає (enriched, decided_disease_name|None)
@@ -42,39 +40,53 @@ async def _enrich_candidates_with_embedded(
         plant_name: str | None = None
         plant_oid: str | None = None
         disease_name: str | None = None
-        disease_id: str | None = None
+        disease_id: str | None = None  # поки не використовуємо
 
-        doc: Plant | None = None
+        doc: Any = None
         if isinstance(plant_ref, str) and plant_ref:
             try:
-                doc = await Plant.find_one(Plant.plantName == plant_ref)
+                doc = await Plant.find_one({"plantName": plant_ref})
             except Exception:
-                logger.exception("plant_lookup_failed for %r", plant_ref)
-                doc = None
+                try:
+                    doc = await Plant.find_one(plant_ref)
+                except Exception:
+                    logger.exception("plant_lookup_failed for %r", plant_ref)
+                    doc = None
 
         if doc:
-            plant_name = getattr(doc, "plantName", None)
             try:
-                plant_oid = str(doc.id)
+                plant_name = (
+                    getattr(doc, "plantName", None)
+                    or getattr(doc, "name", None)
+                    or getattr(doc, "plant_name", None)
+                )
+                if getattr(doc, "id", None) is not None:
+                    plant_oid = str(doc.id)
+
+                diseases = getattr(doc, "diseases", None) or getattr(
+                    doc, "disease", None
+                )
+                if isinstance(disease_ref, str) and disease_ref and diseases:
+                    try:
+                        for d in diseases or []:
+                            name = getattr(d, "diseaseName", None)
+                            if name is None and isinstance(d, dict):
+                                name = (
+                                    d.get("diseaseName")
+                                    or d.get("name")
+                                    or d.get("disease_name")
+                                )
+                            if name == disease_ref:
+                                disease_name = name
+                                break
+                    except Exception:
+                        logger.exception(
+                            "disease_lookup_failed on plant %r", plant_name
+                        )
             except Exception:
-                plant_oid = None
+                logger.exception("unexpected_plant_doc_shape: %r", doc)
 
-            if (
-                isinstance(disease_ref, str)
-                and disease_ref
-                and getattr(doc, "diseases", None)
-            ):
-                try:
-                    for d in doc.diseases or []:
-                        name = getattr(d, "diseaseName", None)
-                        if name is None and isinstance(d, dict):
-                            name = d.get("diseaseName")
-                        if name == disease_ref:
-                            disease_name = name
-                            break
-                except Exception:
-                    logger.exception("disease_lookup_failed on plant %r", plant_name)
-
+        # Фолибек: беремо значення з кандидата
         if plant_name is None and isinstance(plant_ref, str):
             plant_name = plant_ref
         if disease_name is None and isinstance(disease_ref, str):
@@ -110,13 +122,16 @@ async def diagnose(
 
     t0 = time.perf_counter()
     try:
-        candidates = predict_topk(content, topk=topK)
+        # Моки очікують параметр 'topk' (а не 'top_k')
+        candidates = inference.predict_topk(content, topk=topK)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"invalid_image: {e}") from e
     ms = int((time.perf_counter() - t0) * 1000)
 
     try:
-        effective_threshold = max(threshold, settings.min_confidence)
+        effective_threshold = max(
+            threshold, getattr(settings, "min_confidence", threshold)
+        )
         enriched, decided = await _enrich_candidates_with_embedded(
             candidates, effective_threshold
         )
@@ -124,14 +139,16 @@ async def diagnose(
         logger.exception("_enrich_candidates_with_embedded failed")
         raise HTTPException(status_code=500, detail=f"enrich_failed: {e}") from e
 
+    result_payload: dict[str, Any] = {
+        "plantId": enriched[0].get("plant_id") if enriched else None,
+        "candidates": enriched,
+        "decidedDiseaseId": decided,
+    }
+
     doc = Diagnosis(
         status="DONE",
         request={"imageSha256": sha256, "filename": image.filename},
-        result={
-            "plantId": enriched[0].get("plant_id") if enriched else None,
-            "candidates": enriched,
-            "decidedDiseaseId": decided,
-        },
+        result=cast(Any, result_payload),  # прибираємо попередження типізатора
         inference_ms=ms,
     )
     try:
@@ -147,7 +164,7 @@ async def diagnose(
         )
 
     return {
-        "diagnosisId": str(doc.id),
+        "diagnosisId": str(getattr(doc, "id", "")),
         "decidedDiseaseId": decided,
         "candidates": enriched,
         "inferenceMs": ms,
