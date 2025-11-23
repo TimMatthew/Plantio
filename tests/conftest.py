@@ -47,9 +47,6 @@ def sample_jpeg_bytes():
     return buf.getvalue()
 
 
-# --- МОКИ ДЛЯ /diagnose (залиш як у тебе, але з імпортом types вище) ---
-
-
 @pytest.fixture
 def mock_storage_save(monkeypatch, tmp_path):
     from app.api.v1.endpoints import diagnose

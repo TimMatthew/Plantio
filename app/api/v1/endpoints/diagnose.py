@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from loguru import logger
 
 from app.core.config import settings
+from app.core.label_mapping import normalize_names
 from app.models.diagnosis import Diagnosis
 from app.models.plant import Plant
 from app.services import inference
@@ -21,55 +22,78 @@ async def _enrich_candidates_with_embedded(
     """
     Приймає кандидатів у форматі:
       {class_index?, plant_name?, disease_name?, plant_id?, disease_id?, confidence}
-    Повертає: (список збагачених кандидатів, decided_disease_name | None)
+
+    Повертає:
+      (список збагачених кандидатів, decided_disease_id | None)
+
+    ВАЖЛИВО:
+    - disease_id = те, що повернула модель (англійська назва / label з class_map.json),
+      і саме ЦЕ значення віддаємо в decidedDiseaseId (щоб проходили тести).
+    - disease_name = людиночитабельна назва (укр з БД, якщо є).
     """
     enriched: list[dict[str, Any]] = []
     decided: str | None = None
 
     for item in raw:
-        # 1. Базові значення з кандидата
         conf = float(item.get("confidence", 0.0))
 
-        plant_ref = (
+        plant_raw = (
             item.get("plant_name") or item.get("plant_label") or item.get("plant_id")
         )
-        disease_ref = (
+        disease_raw = (
             item.get("disease_name")
             or item.get("disease_label")
             or item.get("disease_id")
         )
 
+        plant_norm, disease_norm, _ = normalize_names(
+            plant_raw if isinstance(plant_raw, str) else None,
+            disease_raw if isinstance(disease_raw, str) else None,
+        )
+
+        disease_id: str | None = None
+        raw_disease_id = item.get("disease_id")
+        raw_disease_label = item.get("disease_label")
+
+        if isinstance(raw_disease_id, str) and raw_disease_id:
+            disease_id = raw_disease_id
+        elif isinstance(raw_disease_label, str) and raw_disease_label:
+            disease_id = raw_disease_label
+        elif isinstance(disease_raw, str) and disease_raw:
+            disease_id = disease_raw
+
+        plant_ref = plant_norm or plant_raw
+        disease_ref = disease_norm or disease_raw
+
         plant_name: str | None = None
         plant_oid: str | None = None
         disease_name: str | None = None
-        disease_id: str | None = None  # поки не використовуємо
 
-        # 2. Пробуємо підтягнути Plant із Mongo, якщо є рядковий plant_ref
         doc: Any = None
         if isinstance(plant_ref, str) and plant_ref:
             try:
                 doc = await Plant.find_one({"plantName": plant_ref})
+                if doc is None and isinstance(plant_raw, str) and plant_raw:
+                    doc = await Plant.find_one({"plantName": plant_raw})
             except Exception:
-                # важливе місце: не робимо другого виклику find_one(plant_ref),
-                # просто лог і рухаємось далі з doc = None
-                logger.error("plant_lookup_failed for %r", plant_ref, exc_info=True)
+                logger.error(
+                    "plant_lookup_failed for %r",
+                    plant_ref,
+                    exc_info=True,
+                )
                 doc = None
 
-        # 3. Якщо doc є — акуратно парсимо його структуру
         if doc is not None:
             try:
-                # ім'я рослини
                 plant_name = (
                     getattr(doc, "plantName", None)
                     or getattr(doc, "name", None)
                     or getattr(doc, "plant_name", None)
                 )
 
-                # id рослини
                 if getattr(doc, "id", None) is not None:
                     plant_oid = str(doc.id)
 
-                # список хвороб у документі
                 diseases = getattr(doc, "diseases", None) or getattr(
                     doc, "disease", None
                 )
@@ -77,7 +101,6 @@ async def _enrich_candidates_with_embedded(
                 if isinstance(disease_ref, str) and disease_ref and diseases:
                     try:
                         for d in diseases or []:
-                            # d може бути Beanie-моделлю або dict
                             name = getattr(d, "diseaseName", None)
                             if name is None and isinstance(d, dict):
                                 name = (
@@ -86,7 +109,7 @@ async def _enrich_candidates_with_embedded(
                                     or d.get("disease_name")
                                 )
 
-                            if name == disease_ref:
+                            if name and name == disease_ref:
                                 disease_name = name
                                 break
                     except Exception:
@@ -96,12 +119,15 @@ async def _enrich_candidates_with_embedded(
             except Exception:
                 logger.exception("unexpected_plant_doc_shape: %r", doc)
 
-        # 4. Fallback: якщо Mongo не дала інформацію — беремо з сирого кандидата
-        if plant_name is None and isinstance(plant_ref, str):
-            plant_name = plant_ref
+        if plant_name is None and isinstance(plant_norm, str):
+            plant_name = plant_norm
+        if plant_name is None and isinstance(plant_raw, str):
+            plant_name = plant_raw
 
-        if disease_name is None and isinstance(disease_ref, str):
-            disease_name = disease_ref
+        if disease_name is None and isinstance(disease_norm, str):
+            disease_name = disease_norm
+        if disease_name is None and isinstance(disease_raw, str):
+            disease_name = disease_raw
 
         enriched.append(
             {
@@ -113,9 +139,8 @@ async def _enrich_candidates_with_embedded(
             }
         )
 
-        # 5. Визначаємо "основний" діагноз, якщо ще не обрали
-        if decided is None and disease_name and conf >= threshold:
-            decided = disease_name
+        if decided is None and disease_id and conf >= threshold:
+            decided = disease_id
 
     return enriched, decided
 
@@ -134,18 +159,19 @@ async def diagnose(
 
     t0 = time.perf_counter()
     try:
-        # Моки очікують параметр 'topk' (а не 'top_k')
-        candidates = inference.predict_topk(content, topk=topK)
+        candidates_raw = inference.predict_topk(content, topk=topK)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"invalid_image: {e}") from e
     ms = int((time.perf_counter() - t0) * 1000)
 
     try:
         effective_threshold = max(
-            threshold, getattr(settings, "min_confidence", threshold)
+            threshold,
+            getattr(settings, "min_confidence", threshold),
         )
         enriched, decided = await _enrich_candidates_with_embedded(
-            candidates, effective_threshold
+            candidates_raw,
+            effective_threshold,
         )
     except Exception as e:
         logger.exception("_enrich_candidates_with_embedded failed")
@@ -160,7 +186,7 @@ async def diagnose(
     doc = Diagnosis(
         status="DONE",
         request={"imageSha256": sha256, "filename": image.filename},
-        result=cast(Any, result_payload),  # прибираємо попередження типізатора
+        result=cast(Any, result_payload),
         inference_ms=ms,
     )
     try:
