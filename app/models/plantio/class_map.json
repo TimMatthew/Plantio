@@ -1,32 +1,32 @@
 {
   "0": { "plant_label": "apple", "plant_name": "Яблуня", "disease_label": "black_rot", "disease_name": "Чорна гниль" },
-  "1": { "plant_label": "apple", "plant_name": "Яблуня", "disease_label": "cedar_rust", "disease_name": "Іржа яблуні" },
+  "1": { "plant_label": "apple", "plant_name": "Яблуня", "disease_label": "cedar_rust", "disease_name": "Іржа яблуні (ялівцева)" },
   "2": { "plant_label": "apple", "plant_name": "Яблуня", "disease_label": "healthy", "disease_name": "Здорова рослина" },
   "3": { "plant_label": "apple", "plant_name": "Яблуня", "disease_label": "scab", "disease_name": "Парша" },
 
   "4": { "plant_label": "cherry_sour", "plant_name": "Вишня (кисла)", "disease_label": "healthy", "disease_name": "Здорова рослина" },
   "5": { "plant_label": "cherry_sour", "plant_name": "Вишня (кисла)", "disease_label": "powdery_mildew", "disease_name": "Борошниста роса" },
 
-  "6": { "plant_label": "corn", "plant_name": "Кукурудза", "disease_label": "common_rust", "disease_name": "Іржа кукурудзи" },
+  "6": { "plant_label": "corn", "plant_name": "Кукурудза", "disease_label": "common_rust", "disease_name": "Звичайна іржа" },
   "7": { "plant_label": "corn", "plant_name": "Кукурудза", "disease_label": "healthy", "disease_name": "Здорова рослина" },
   "8": { "plant_label": "corn", "plant_name": "Кукурудза", "disease_label": "leaf_blight", "disease_name": "Листова плямистість" },
 
   "9": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "bacterial_wilt", "disease_name": "Бактеріальне в'янення" },
   "10": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "belly_rot", "disease_name": "Гниль плодів" },
   "11": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "downy_mildew", "disease_name": "Пероноспороз" },
-  "12": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "healthy", "disease_name": "Здорова рослина" },
-  "13": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "gummy_stem_blight", "disease_name": "В'янення" },
-  "14": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "pythium_rot", "disease_name": "Пітіумна гниль" },
+  "12": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "fresh_cucumber", "disease_name": "Свіжий огірок" },
+  "13": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "fresh_leaf", "disease_name": "Свіжий лист" },
+  "14": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "gummy_stem_blight", "disease_name": "В'янення стебла" },
+  "15": { "plant_label": "cucumber", "plant_name": "Огірок", "disease_label": "pythium_rot", "disease_name": "Пітіумна гниль" },
 
-  "15": { "plant_label": "grape", "plant_name": "Виноград", "disease_label": "black_rot", "disease_name": "Чорна гниль" },
-  "16": { "plant_label": "grape", "plant_name": "Виноград", "disease_label": "esca", "disease_name": "Еска винограду" },
-  "17": { "plant_label": "grape", "plant_name": "Виноград", "disease_label": "healthy", "disease_name": "Здорова рослина" },
-  "18": { "plant_label": "grape", "plant_name": "Виноград", "disease_label": "leaf_blight", "disease_name": "Листова плямистість" },
+  "16": { "plant_label": "grape", "plant_name": "Виноград", "disease_label": "black_rot", "disease_name": "Чорна гниль" },
+  "17": { "plant_label": "grape", "plant_name": "Виноград", "disease_label": "esca", "disease_name": "Еска винограду" },
+  "18": { "plant_label": "grape", "plant_name": "Виноград", "disease_label": "healthy", "disease_name": "Здорова рослина" },
+  "19": { "plant_label": "grape", "plant_name": "Виноград", "disease_label": "leaf_blight", "disease_name": "Листова плямистість" },
 
-  "19": { "plant_label": "sunflower", "plant_name": "Соняшник", "disease_label": "rhizopus_rot", "disease_name": "Ризопусна гниль" },
   "20": { "plant_label": "sunflower", "plant_name": "Соняшник", "disease_label": "healthy", "disease_name": "Здорова рослина" },
-
   "21": { "plant_label": "wheat", "plant_name": "Пшениця", "disease_label": "healthy", "disease_name": "Здорова рослина" },
+
   "22": { "plant_label": "pepper_bell", "plant_name": "Болгарський перець", "disease_label": "bacterial_spot", "disease_name": "Бактеріальна плямистість" },
   "23": { "plant_label": "pepper_bell", "plant_name": "Болгарський перець", "disease_label": "healthy", "disease_name": "Здорова рослина" },
 
@@ -37,12 +37,14 @@
   "27": { "plant_label": "wheat", "plant_name": "Пшениця", "disease_label": "powdery_mildew", "disease_name": "Борошниста роса" },
   "28": { "plant_label": "raspberry", "plant_name": "Малина", "disease_label": "healthy", "disease_name": "Здорова рослина" },
 
-  "29": { "plant_label": "sunflower", "plant_name": "Соняшник", "disease_label": "rhizopus_rot", "disease_name": "Ризопус" },
+  "29": { "plant_label": "sunflower", "plant_name": "Соняшник", "disease_label": "rhizopus_rot", "disease_name": "Ризопусна гниль" },
+
   "30": { "plant_label": "wheat", "plant_name": "Пшениця", "disease_label": "rust", "disease_name": "Іржа" },
   "31": { "plant_label": "wheat", "plant_name": "Пшениця", "disease_label": "septoria", "disease_name": "Септоріоз" },
   "32": { "plant_label": "wheat", "plant_name": "Пшениця", "disease_label": "smuts", "disease_name": "Сажка" },
 
   "33": { "plant_label": "soybean", "plant_name": "Соя", "disease_label": "healthy", "disease_name": "Здорова рослина" },
+
   "34": { "plant_label": "squash", "plant_name": "Гарбуз", "disease_label": "powdery_mildew", "disease_name": "Борошниста роса" },
 
   "35": { "plant_label": "strawberry", "plant_name": "Полуниця", "disease_label": "healthy", "disease_name": "Здорова рослина" },
@@ -57,16 +59,5 @@
   "43": { "plant_label": "tomato", "plant_name": "Помідор", "disease_label": "spider_mites", "disease_name": "Павутинний кліщ" },
   "44": { "plant_label": "tomato", "plant_name": "Помідор", "disease_label": "target_spot", "disease_name": "Кільцева плямистість" },
   "45": { "plant_label": "tomato", "plant_name": "Помідор", "disease_label": "verticillium", "disease_name": "Вертицильоз" },
-  "46": { "plant_label": "tomato", "plant_name": "Помідор", "disease_label": "yellow_leaf_curl_virus", "disease_name": "Вірус жовтого скручування листя" },
-
-  "47": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "48": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "49": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "50": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "51": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "52": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "53": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "54": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "55": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null },
-  "56": { "plant_label": "unused", "plant_name": null, "disease_label": null, "disease_name": null }
+  "46": { "plant_label": "tomato", "plant_name": "Помідор", "disease_label": "yellow_leaf_curl_virus", "disease_name": "Вірус жовтого скручування листя" }
 }
