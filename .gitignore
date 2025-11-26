@@ -1,4 +1,3 @@
-# Environment/caches
 .venv/
 __pycache__/
 *.pyc
@@ -9,34 +8,23 @@ __pycache__/
 .coverage
 htmlcov/
 .cache/
-
-# IDE
 .idea/
 .vscode/
-
-# Local files/secrets
 .env
 .env.*
 !.env.example
 !.env.prod.example
 .env.*.local
-
-# Models and local downloads
-models/
-!models/.gitkeep
 storage/uploads/
-!storage/.gitkeep
+storage/tmp/
 storage/uploads/**
 storage/tmp/**
-*.pth
-*.pt
-app/models/**/model.pth
-
-# Other
-.DS_Store
-
-app/models/plantio/*
+!storage/.gitkeep
+!app/models/plantio/
+!app/models/plantio/model.pth
+!app/models/plantio/class_map.json
+app/models/plantio/*.tmp
+app/models/plantio/*.bak
 !app/models/plantio/.gitkeep
-app/models/plantio/*.pth
-app/models/plantio/class_map.json
-
+.DS_Store
+!models/.gitkeep

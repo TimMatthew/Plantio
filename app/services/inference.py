@@ -20,40 +20,41 @@ except Exception as e:  # noqa: BLE001
     TORCH_AVAILABLE = False
 
 
-def _load_class_map(path: Path) -> dict[int, dict[str, str | None]]:
+def _load_class_map(path: Path) -> dict[int, dict[str, Any]]:
     """
-    Приймає записи як з id, так і з назвами.
-    Приклад валідного class_map.json:
+    Завантажує class_map.json у новому форматі:
     {
-      "0": { "plant_name": "Яблуня", "disease_name": "Black rot (чорна гниль)" },
-      "1": { "plant_name": "Соняшник", "disease_name": "Склеротинія" }
+        "0": {
+            "plant_label": "apple",
+            "plant_name": "Яблуня",
+            "disease_label": "black_rot",
+            "disease_name": "Чорна гниль"
+        }
     }
     """
     if not path.exists():
         logger.warning("class_map.json not found at {}", path)
         return {}
+
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception as e:
         logger.error("Failed to parse class_map.json: {}", e)
         return {}
 
-    out: dict[int, dict[str, str | None]] = {}
-    for k, v in data.items():
+    out = {}
+    for key, v in data.items():
         try:
-            idx = int(k)
+            idx = int(key)
             out[idx] = {
-                "plant_id": v.get("plant_id"),
-                "disease_id": v.get("disease_id"),
-                "plant_name": v.get("plant_name")
-                or v.get("plant")
-                or v.get("plantLabel"),
-                "disease_name": v.get("disease_name")
-                or v.get("disease")
-                or v.get("diseaseLabel"),
+                "plant_label": v.get("plant_label"),
+                "plant_name": v.get("plant_name"),
+                "disease_label": v.get("disease_label"),
+                "disease_name": v.get("disease_name"),
             }
         except Exception:
-            logger.error("Invalid class_map entry for key {}: {}", k, v)
+            logger.error("Invalid class_map entry for key {}: {}", key, v)
+
     return out
 
 
