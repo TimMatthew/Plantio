@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-import numpy as np
+import torchvision.transforms as transforms
 from loguru import logger
 from PIL import Image
 
@@ -105,14 +105,16 @@ class _TorchClassifier(_BaseClassifier):
 
     @staticmethod
     def _preprocess(image_bytes: bytes) -> torch.Tensor:
-        img = Image.open(io.BytesIO(image_bytes)).convert("RGB").resize((224, 224))
-        arr = np.asarray(img, dtype=np.float32) / 255.0
-        arr = np.transpose(arr, (2, 0, 1))
-        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(3, 1, 1)
-        std = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(3, 1, 1)
-        arr = (arr - mean) / std
-        x = torch.from_numpy(arr).unsqueeze(0)
-        return x
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+        transform = transforms.Compose(
+            [
+                transforms.Resize((224, 224)),
+                transforms.ToTensor(),  # автоматично /255
+            ]
+        )
+
+        return transform(img).unsqueeze(0)
 
     @torch.inference_mode()  # type: ignore[misc]
     def predict_topk(self, image_bytes: bytes, topk: int = 3) -> list[dict[str, Any]]:
