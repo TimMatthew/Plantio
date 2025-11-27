@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import re
+from functools import lru_cache
+from pathlib import Path
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -33,7 +37,6 @@ class Settings(BaseSettings):
         return self.mongo_uri_atlas or self.mongo_uri_local
 
     model_config = SettingsConfigDict(
-        env_file=".env",
         env_prefix="PLANTIO_",
         case_sensitive=False,
         extra="ignore",
@@ -55,4 +58,47 @@ class Settings(BaseSettings):
         return []
 
 
-settings = Settings()
+def _read_env_selector(file: str = ".env") -> str | None:
+    """
+    Дістає PLANTIO_ENV з .env, ігнорує інлайн-коментарі: 'prod # dev/prod'.
+    Без залежностей.
+    """
+    p = Path(file)
+    if not p.exists():
+        return None
+    for raw in p.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("PLANTIO_ENV"):
+            m = re.match(r"PLANTIO_ENV\s*=\s*(.+)", line, flags=re.I)
+            if not m:
+                continue
+            val = m.group(1).strip()
+            if "#" in val and not (
+                val.startswith(("'", '"')) and val.endswith(("'", '"'))
+            ):
+                val = val.split("#", 1)[0].strip()
+            val = val.strip().strip('"').strip("'")
+            return val or None
+    return None
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    env_from_os = os.getenv("PLANTIO_ENV")
+    env_from_file = _read_env_selector(".env")
+    env = (env_from_os or env_from_file or "dev").strip().lower()
+
+    is_prod = env == "prod" or env == "production" or env.startswith("prod")
+
+    env_file = ".env.prod" if is_prod else ".env.dev"
+
+    env_files = [env_file]
+    if Path(".env.common").exists():
+        env_files.insert(0, ".env.common")
+
+    return Settings(_env_file=tuple(env_files))
+
+
+settings = get_settings()

@@ -2,8 +2,8 @@
 set namespaceSeparator ::
 hide empty members
 
-package "app.core.config" {
-  class "Settings" as app_core_config_Settings {
+package "plantio.app.core.config" {
+  class "Settings" as plantio_app_core_config_Settings {
   app_name: str
   app_version: str
   env: str
@@ -23,67 +23,72 @@ package "app.core.config" {
   }
 }
 
-package "app.core.logging" {
-  class "InterceptHandler" as app_core_logging_InterceptHandler {
+package "plantio.app.core.logging" {
+  class "InterceptHandler" as plantio_app_core_logging_InterceptHandler {
   }
 }
 
-package "app.models.diagnosis" {
-  class "Candidate" as app_models_diagnosis_Candidate {
-  disease_id: str
-  confidence: float
-  }
-  class "Diagnosis" as app_models_diagnosis_Diagnosis {
+package "plantio.app.models.diagnosis" {
+  class "Diagnosis" as plantio_app_models_diagnosis_Diagnosis {
   status: str
-  request: dict
-  result: dict | None
   created_at: datetime
+  request: dict[str, Any]
+  result: dict[str, Any] | None
   inference_ms: int | None
   }
 }
 
-package "app.models.disease" {
-  class "Disease" as app_models_disease_Disease {
+package "plantio.app.models.disease" {
+  class "Disease" as plantio_app_models_disease_Disease {
   id: str
   plant_id: str
-  name: Dict[str, str]
-  symptoms: List[str]
-  causes: Optional[str]
-  treatments: List[dict]
-  gallery: List[str]
-  popularity: int
-  }
-  class "TreatmentItem" as app_models_disease_TreatmentItem {
-  }
-}
-
-package "app.models.plant" {
-  class "Plant" as app_models_plant_Plant {
-  id: str
-  name: Dict[str, str]
-  aliases: List[str]
-  images: List[str]
+  name: dict[str, str]
+  symptoms: list[str]
+  causes: str | None
+  treatments: list[dict]
+  gallery: list[str]
   popularity: int
   }
 }
 
-package "app.services.inference" {
-  class "_BaseClassifier" as app_services_inference__BaseClassifier {
+package "plantio.app.models.plant" {
+  class "DiseaseInPlant" as plantio_app_models_plant_DiseaseInPlant {
+  diseaseName: str
+  description: str
+  symptoms: list[str]
+  prevention: list[str]
+  treatment: list[str]
+  riskLevel: str | None
+  images: list[str]
   }
-  class "_DummyClassifier" as app_services_inference__DummyClassifier {
-  }
-  class "_TorchClassifier" as app_services_inference__TorchClassifier {
+  class "Plant" as plantio_app_models_plant_Plant {
+  id: PydanticObjectId | None
+  plantName: str
+  scientificName: str | None
+  description: str | None
+  imageUrl: str | None
+  diseases: list[DiseaseInPlant]
+  model_config
   }
 }
 
-package "app.services.storage" {
-  class "LocalFileStorage" as app_services_storage_LocalFileStorage {
+package "plantio.app.services.inference" {
+  class "_BaseClassifier" as plantio_app_services_inference__BaseClassifier {
+  }
+  class "_DummyClassifier" as plantio_app_services_inference__DummyClassifier {
+  }
+  class "_TorchClassifier" as plantio_app_services_inference__TorchClassifier {
   }
 }
 
-app_services_inference__DummyClassifier --|> app_services_inference__BaseClassifier
-app_services_inference__TorchClassifier --|> app_services_inference__BaseClassifier
+package "plantio.app.services.storage" {
+  class "LocalFileStorage" as plantio_app_services_storage_LocalFileStorage {
+  }
+}
 
-app_models_diagnosis_Candidate " * " --> " 1 " app_models_disease_Disease : Candidate.disease_id → Disease.id\nКандидат класифікації посилається на конкретну хворобу
-app_models_disease_Disease " * " --> " 1 " app_models_plant_Plant : Disease.plant_id → Plant.id\nКожна хвороба належить до певної рослини (виду/культури)
+plantio_app_services_inference__DummyClassifier --|> plantio_app_services_inference__BaseClassifier
+plantio_app_services_inference__TorchClassifier --|> plantio_app_services_inference__BaseClassifier
+
+plantio_app_models_disease_Disease " * " --> "1" plantio_app_models_plant_Plant : plant_id → Plant.id
+plantio_app_models_plant_Plant "1" --> "*" plantio_app_models_plant_DiseaseInPlant : diseases
 @enduml

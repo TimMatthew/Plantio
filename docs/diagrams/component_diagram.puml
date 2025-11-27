@@ -7,38 +7,54 @@ actor "Web Client" as Web
 
 ' === Зовнішні системи ===
 component "MongoDB / Atlas" as MongoDB <<database>>
-component "Файлова система\n(uploads, models)" as FS <<storage>>
+component "Файлова система\n(uploads, models, class_map)" as FS <<storage>>
+component "Process ENV\n(PLANTIO_ENV, ін. змінні)" as ProcEnv <<env>>
 
 ' === Додаток FastAPI ===
 node "FastAPI Application" as FastAPI {
-  component "API\n(Diagnosis, Diseases, Plants, Health)" as ApiV1 <<router>>
+  component "API v1\n(Diagnose, Plants, Diseases, Health)" as ApiV1 <<router>>
 
-  component "Inference Service" as Inference
+  component "Inference Service\n(_Base → _Torch|_Dummy)" as Inference
   component "LocalFileStorage" as LocalFS
-  component "DB Init / Access" as DbInit <<motor>>
+  component "Beanie ODM\n(Init / Access)" as Beanie <<odm>>
   component "Settings" as Settings <<config>>
-  component "Logging (InterceptHandler)" as Logging <<logging>>
+  component "Logging (InterceptHandler → loguru)" as Logging <<logging>>
+
+  component "Env Selector\n(.env → .env.dev/.env.prod)" as EnvSel <<config>>
 }
 
 ' === Бібліотеки як внутрішні залежності ===
-component "PyTorch" as LibTorch <<library>>
-component "NumPy / PIL" as LibImg <<library>>
+component "PyTorch / TorchVision" as LibTorch <<library>>
+component "PIL / torchvision.transforms" as LibImg <<library>>
+component "loguru" as LibLoguru <<library>>
 
 ' === Взаємодії ===
 Web --> ApiV1 : HTTP/JSON
 
+' API викликає доменні сервіси
 ApiV1 --> Inference : Класифікація зображення
-ApiV1 --> LocalFS : Читання завантажень
-ApiV1 --> MongoDB : CRUD/пошук
+ApiV1 --> LocalFS : Збереження/читання завантажень
+ApiV1 --> Beanie : CRUD (plants, diseases,\ninsert Diagnosis)
 
-DbInit --> MongoDB : Async підключення (motor)
-FastAPI --> DbInit : Ініціалізація
-FastAPI --> Settings : Конфігурація (URI, CORS, шляхи)
-FastAPI --> Logging : Логування
+' Ініціалізація інфраструктури
+FastAPI --> Beanie : init_beanie(database)
+Beanie --> MongoDB : Async-підключення (motor)
+FastAPI --> Settings : Конфіг (URI, шляхи, CORS)
+FastAPI --> Logging : Ініціалізація логування
 
-Inference --> LocalFS : Модель та class_map
+' Залежності інференсу
+Inference --> LocalFS : Завантажити модель\nта class_map
 Inference --> LibTorch : Обчислення
 Inference --> LibImg : Препроцесинг
 
-LocalFS --> FS : Читання/запис файлів
+' Файли
+LocalFS --> FS : Читання/запис файлів (uploads,\nmodel.pth, class_map.json)
+
+' Конфігурація середовища
+EnvSel ..> Settings : Обрати _env_file\n(.env.dev | .env.prod)
+ProcEnv ..> EnvSel : PLANTIO_ENV=dev|prod\n(маячок)
+
+' Логування
+Logging --> LibLoguru : Перенаправлення логів
+
 @enduml

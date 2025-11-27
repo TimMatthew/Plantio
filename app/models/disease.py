@@ -2,10 +2,6 @@ from beanie import Document
 from pydantic import Field
 
 
-class TreatmentItem(dict[str, object]):
-    pass
-
-
 class Disease(Document):
     id: str = Field(default_factory=str)
     plant_id: str
