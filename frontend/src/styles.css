@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Small custom styles */
+body {
+  @apply bg-slate-50;
+  font-family: "TT Ramillas", serif;
+}
+
+@font-face {
+  font-family: "Apothicaire";
+  src: url("/fonts/Apothicaire Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "TT Ramillas";
+  src: url("fonts/tt-ramillas-trl/TT Ramillas Trial Regular.ttf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+.app-background-home {
+  min-height: 100vh;
+  background: url('/images/bg.png') center/cover no-repeat;
+}
+
+.app-background-pages {
+  min-height: 100vh;
+  background: url('/images/bg.png');
+}
+
+.font-apothicaire {
+  font-family: "Apothicaire", serif;
+}
+
+.main-website-color {
+  color: #3d6250;
+}
+
+.font-ramillas {
+  font-family: "TT Ramillas", serif;
+}
+
+
+
+.header-hover {
+  color: #264034;
+}
+
+.custom-search:before {
+  color: black;
+}
+
+input::placeholder {
+    color: #264034;
+}
+
+
+.custom-search {
+  background-color: transparent;
+  font-family: "TT Ramillas", serif;
+  color: #264034;
+  border-bottom: 1px solid #264034;
+}
+
+.custom-search:focus {
+  outline: none;
+}
+
+
+
+.glass-card {
+
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0px 0px rgba(255, 255, 255, 0);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.8),
+    transparent
+  );
+}
+
+.glass-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.8),
+    transparent,
+    rgba(255, 255, 255, 0.3)
+  );
+}
+
+.plant-card {
+  @apply transition-transform duration-500 ease-in-out;
+}
+
+.plant-card:hover {
+  transform: scale(1.05);
+}
+
+.logo {
+  width: 250px;
+  height: auto;
+}
+
+.nav-logo {
+  width: 150px;
+  height: auto;
+}
